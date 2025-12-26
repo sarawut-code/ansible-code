@@ -1,43 +1,41 @@
 ---
-- name: Infrastructure Security - Firewall Control Automation
+- name: Infrastructure Security - Firewall Management
   hosts: all
   become: yes
-  become_method: sudo  # ระบุวิธีเปลี่ยนสิทธิ์ให้ชัดเจน
-  gather_facts: yes     # ให้ Ansible เก็บข้อมูลเครื่องก่อนเริ่ม
-
-  vars:
-    allowed_services:
-      - http
-      - ssh
-    allowed_ports:
-      - 10050/tcp
+  # ตัวแปร firewall_action จะถูกส่งมาจาก Survey ที่คุณตั้งค่าไว้
 
   tasks:
-    # เพิ่ม Task นี้เพื่อตรวจสอบว่าเราเป็น root จริงไหม
-    - name: 0. Verify effective user is root
-      ansible.builtin.command: whoami
-      register: user_status
-      changed_when: false
+    # --- กรณีเลือก enable ---
+    - name: Section - Enable and Config Firewall
+      when: firewall_action == "enable"
+      block:
+        - name: 1.1 Install Firewalld
+          ansible.builtin.package:
+            name: firewalld
+            state: present
 
-    - name: 1. Install Python 3 if missing
-      ansible.builtin.raw: test -e /usr/bin/python3 || (yum install -y python3 || apt-get install -y python3)
-      changed_when: false
+        - name: 1.2 Start Service
+          ansible.builtin.service:
+            name: firewalld
+            state: started
+            enabled: yes
 
-    - name: 2. Ensure Firewalld is installed
-      ansible.builtin.package:
-        name: firewalld
-        state: present
+        - name: 1.3 Allow Services and Ports
+          ansible.posix.firewalld:
+            service: "{{ item.svc | default(omit) }}"
+            port: "{{ item.port | default(omit) }}"
+            permanent: yes
+            state: enabled
+            immediate: yes
+          loop:
+            - { svc: 'http' }
+            - { svc: 'ssh' }
+            - { port: '10050/tcp' }
 
-    - name: 3. Ensure Firewalld is started and enabled
+    # --- กรณีเลือก disable ---
+    - name: Section - Disable Firewall
+      when: firewall_action == "disable"
       ansible.builtin.service:
         name: firewalld
-        state: started
-        enabled: yes
-
-    - name: 4. Allow Standard Services (HTTP, SSH)
-      ansible.posix.firewalld:
-        service: "{{ item }}"
-        permanent: yes
-        state: enabled
-        immediate: yes
-      loop: "{{ allowed_services }}"
+        state: stopped
+        enabled: no
