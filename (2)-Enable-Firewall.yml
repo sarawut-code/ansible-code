@@ -2,16 +2,24 @@
 - name: Infrastructure Security - Firewall Control Automation
   hosts: all
   become: yes
+  become_method: sudo  # ระบุวิธีเปลี่ยนสิทธิ์ให้ชัดเจน
+  gather_facts: yes     # ให้ Ansible เก็บข้อมูลเครื่องก่อนเริ่ม
+
   vars:
-    # รายการ Port และ Service
     allowed_services:
       - http
       - ssh
     allowed_ports:
-      - 10050/tcp  # Zabbix Agent
+      - 10050/tcp
 
   tasks:
-    - name: 1. Install Python 3 if missing (Pre-requisite)
+    # เพิ่ม Task นี้เพื่อตรวจสอบว่าเราเป็น root จริงไหม
+    - name: 0. Verify effective user is root
+      ansible.builtin.command: whoami
+      register: user_status
+      changed_when: false
+
+    - name: 1. Install Python 3 if missing
       ansible.builtin.raw: test -e /usr/bin/python3 || (yum install -y python3 || apt-get install -y python3)
       changed_when: false
 
@@ -33,20 +41,3 @@
         state: enabled
         immediate: yes
       loop: "{{ allowed_services }}"
-
-    - name: 5. Allow Custom Ports (Zabbix 10050)
-      ansible.posix.firewalld:
-        port: "{{ item }}"
-        permanent: yes
-        state: enabled
-        immediate: yes
-      loop: "{{ allowed_ports }}"
-
-    - name: 6. Verify Firewall Rules
-      ansible.builtin.command: firewall-cmd --list-all
-      register: fw_status
-      changed_when: false
-
-    - name: 7. Show Firewall Status
-      ansible.builtin.debug:
-        var: fw_status.stdout_lines
