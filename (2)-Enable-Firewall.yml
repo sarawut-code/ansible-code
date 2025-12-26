@@ -3,7 +3,7 @@
   hosts: all
   become: yes
   vars:
-    # รายการ Port ที่ตรวจพบจากคำสั่ง ss ของคุณ
+    # รายการ Port และ Service
     allowed_services:
       - http
       - ssh
@@ -11,18 +11,22 @@
       - 10050/tcp  # Zabbix Agent
 
   tasks:
-    - name: 1. Ensure Firewalld is installed
-      ansible.builtin.dnf:
+    - name: 1. Install Python 3 if missing (Pre-requisite)
+      ansible.builtin.raw: test -e /usr/bin/python3 || (yum install -y python3 || apt-get install -y python3)
+      changed_when: false
+
+    - name: 2. Ensure Firewalld is installed
+      ansible.builtin.package:
         name: firewalld
         state: present
 
-    - name: 2. Ensure Firewalld is started and enabled (Auto-start)
+    - name: 3. Ensure Firewalld is started and enabled
       ansible.builtin.service:
         name: firewalld
         state: started
         enabled: yes
 
-    - name: 3. Allow Standard Services (HTTP, SSH)
+    - name: 4. Allow Standard Services (HTTP, SSH)
       ansible.posix.firewalld:
         service: "{{ item }}"
         permanent: yes
@@ -30,7 +34,7 @@
         immediate: yes
       loop: "{{ allowed_services }}"
 
-    - name: 4. Allow Custom Ports (Zabbix 10050)
+    - name: 5. Allow Custom Ports (Zabbix 10050)
       ansible.posix.firewalld:
         port: "{{ item }}"
         permanent: yes
@@ -38,10 +42,11 @@
         immediate: yes
       loop: "{{ allowed_ports }}"
 
-    - name: 5. Verify Firewall Rules
+    - name: 6. Verify Firewall Rules
       ansible.builtin.command: firewall-cmd --list-all
       register: fw_status
+      changed_when: false
 
-    - name: 6. Show Firewall Status
+    - name: 7. Show Firewall Status
       ansible.builtin.debug:
         var: fw_status.stdout_lines
