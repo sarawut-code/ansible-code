@@ -1,0 +1,47 @@
+---
+- name: Infrastructure Security - Firewall Control Automation
+  hosts: all
+  become: yes
+  vars:
+    # รายการ Port ที่ตรวจพบจากคำสั่ง ss ของคุณ
+    allowed_services:
+      - http
+      - ssh
+    allowed_ports:
+      - 10050/tcp  # Zabbix Agent
+
+  tasks:
+    - name: 1. Ensure Firewalld is installed
+      ansible.builtin.dnf:
+        name: firewalld
+        state: present
+
+    - name: 2. Ensure Firewalld is started and enabled (Auto-start)
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: 3. Allow Standard Services (HTTP, SSH)
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop: "{{ allowed_services }}"
+
+    - name: 4. Allow Custom Ports (Zabbix 10050)
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop: "{{ allowed_ports }}"
+
+    - name: 5. Verify Firewall Rules
+      ansible.builtin.command: firewall-cmd --list-all
+      register: fw_status
+
+    - name: 6. Show Firewall Status
+      ansible.builtin.debug:
+        var: fw_status.stdout_lines
