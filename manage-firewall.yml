@@ -1,0 +1,40 @@
+---
+- name: Infrastructure Security - Firewall Management
+  hosts: all
+  become: yes
+  vars:
+    # ค่าเหล่านี้จะถูกส่งมาจาก Survey ใน AWX
+    firewall_action: "enable" 
+    allowed_services: [http, ssh]
+    allowed_ports: [10050/tcp]
+
+  tasks:
+    # --- ส่วนการเปิด Firewall ---
+    - name: Enable and Start Firewall
+      when: firewall_action == "enable"
+      block:
+        - ansible.builtin.package:
+            name: firewalld
+            state: present
+        - ansible.builtin.service:
+            name: firewalld
+            state: started
+            enabled: yes
+        - ansible.posix.firewalld:
+            service: "{{ item.svc | default(omit) }}"
+            port: "{{ item.port | default(omit) }}"
+            permanent: yes
+            state: enabled
+            immediate: yes
+          loop:
+            - { svc: 'http' }
+            - { svc: 'ssh' }
+            - { port: '10050/tcp' }
+
+    # --- ส่วนการปิด Firewall ---
+    - name: Disable and Stop Firewall
+      when: firewall_action == "disable"
+      ansible.builtin.service:
+        name: firewalld
+        state: stopped
+        enabled: no
