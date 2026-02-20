@@ -82,6 +82,8 @@
         msg: "{{ report_content }}"
 
     - name: Send Email with Attachment
+      become: false
+      run_once: true
       mail:
         host: "{{ smtp_server }}"
         port: "{{ smtp_port }}"
