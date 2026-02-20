@@ -63,7 +63,7 @@
     smtp_server: "smtp.gmail.com"
     smtp_port: 587
     smtp_user: "sarawut.dank@gmail.com"
-    smtp_password: "{{ smtp_password }}"
+    smtp_password: "rjhz ljzk wvkv nzdi"
     to_email: "sarawut.da@maholan.co.th"
 
   tasks:
@@ -93,6 +93,7 @@
         attach:
           - "{{ report_path }}"
         secure: starttls
+
 
 
 
