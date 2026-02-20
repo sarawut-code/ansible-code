@@ -1,0 +1,30 @@
+---
+- name: Linux Health Check
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Check CPU load
+      shell: uptime
+      register: cpu_result
+
+    - name: Check memory usage
+      shell: free -m
+      register: mem_result
+
+    - name: Check disk usage
+      shell: df -h
+      register: disk_result
+
+    - name: Check SSH service
+      systemd:
+        name: sshd
+        state: started
+      register: ssh_status
+
+    - name: Show result
+      debug:
+        msg:
+          - "{{ cpu_result.stdout }}"
+          - "{{ mem_result.stdout }}"
+          - "{{ disk_result.stdout }}"
