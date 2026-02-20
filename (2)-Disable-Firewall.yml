@@ -2,13 +2,19 @@
 - name: Infrastructure Security - Firewall Management
   hosts: all
   become: yes
-  # ตัวแปร firewall_action จะถูกส่งมาจาก Survey ที่คุณตั้งค่าไว้
 
   tasks:
-    # --- กรณีเลือก disable ---
-    - name: Section - Disable Firewall
-      when: firewall_action == "disable"
-      ansible.builtin.service:
+
+    - name: Disable Firewalld (RHEL/CentOS/Oracle)
+      when: ansible_facts['os_family'] == "RedHat"
+      ansible.builtin.systemd:
         name: firewalld
+        state: stopped
+        enabled: no
+
+    - name: Disable UFW (Ubuntu/Debian)
+      when: ansible_facts['os_family'] == "Debian"
+      ansible.builtin.systemd:
+        name: ufw
         state: stopped
         enabled: no
