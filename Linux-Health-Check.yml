@@ -2,29 +2,32 @@
 - name: Linux Health Check
   hosts: all
   become: yes
+  gather_facts: yes
+
   tasks:
 
-    - name: Check CPU load
-      shell: uptime
-      register: cpu_result
+    - name: Calculate memory usage
+      set_fact:
+        memory_used_mb: "{{ ansible_memtotal_mb - ansible_memfree_mb }}"
+        memory_usage_percent: "{{ ((ansible_memtotal_mb - ansible_memfree_mb) / ansible_memtotal_mb * 100) | round(2) }}"
 
-    - name: Check memory usage
-      shell: free -m
-      register: mem_result
-
-    - name: Check disk usage
-      shell: df -h
-      register: disk_result
-
-    - name: Check SSH service
-      systemd:
-        name: sshd
-        state: started
-      register: ssh_status
-
-    - name: Show result
+    - name: Show formatted health report
       debug:
-        msg:
-          - "{{ cpu_result.stdout }}"
-          - "{{ mem_result.stdout }}"
-          - "{{ disk_result.stdout }}"
+        msg: |
+          ==========================================
+                LINUX SERVER HEALTH REPORT
+          ==========================================
+          Hostname          : {{ ansible_hostname }}
+          IP Address        : {{ ansible_default_ipv4.address }}
+          OS                : {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Uptime            : {{ ansible_uptime_seconds // 86400 }} days
+
+          CPU Cores         : {{ ansible_processor_vcpus }}
+          Memory Total      : {{ ansible_memtotal_mb }} MB
+          Memory Used       : {{ memory_used_mb }} MB
+          Memory Usage      : {{ memory_usage_percent }} %
+
+          Root Disk Size    : {{ ansible_mounts | selectattr('mount','equalto','/') | map(attribute='size_total') | first | filesizeformat }}
+          Root Disk Used    : {{ ansible_mounts | selectattr('mount','equalto','/') | map(attribute='size_available') | first | filesizeformat }}
+
+          ==========================================
