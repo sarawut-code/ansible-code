@@ -1,5 +1,5 @@
 ---
-- name: Linux Health Check with Alert and Email
+- name: Collect Health Data
   hosts: all
   become: yes
   gather_facts: yes
@@ -7,15 +7,6 @@
   vars:
     memory_threshold: 80
     disk_threshold: 90
-
-    # Save report on AWX control node
-    report_path: "/tmp/health_report_{{ inventory_hostname }}.txt"
-
-    smtp_server: "smtp.gmail.com"
-    smtp_port: 587
-    smtp_user: "sarawut.dank@gmail.com"
-    smtp_password: "rjhz ljzk wvkv nzdi"
-    to_email: "sarawut.da@maholan.co.th"
 
   tasks:
 
@@ -40,9 +31,9 @@
       set_fact:
         disk_status: "{{ 'CRITICAL' if disk_usage_percent|float > disk_threshold else 'OK' }}"
 
-    - name: Generate Report Content
+    - name: Build Per-Host Report
       set_fact:
-        report_content: |
+        host_report: |
           ==========================================
                  LINUX SERVER HEALTH REPORT
           ==========================================
@@ -62,27 +53,46 @@
           Disk Status      : {{ disk_status }}
 
           ==========================================
+          
+- name: Generate Final Combined Report
+  hosts: localhost
+  gather_facts: no
 
-    # 🔥 IMPORTANT FIX: Create file on localhost
-    - name: Save Report on AWX control node
-      become: false
-      delegate_to: localhost
+  vars:
+    report_path: "/tmp/full_health_report.txt"
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    smtp_user: "sarawut.dank@gmail.com"
+    smtp_password: "{{ smtp_password }}"
+    to_email: "sarawut.da@maholan.co.th"
+
+  tasks:
+
+    - name: Combine All Host Reports
+      set_fact:
+        combined_report: |
+          {% for host in groups['all'] %}
+          {{ hostvars[host].host_report }}
+
+          {% endfor %}
+
+    - name: Save Combined Report
       copy:
-        content: "{{ report_content }}"
+        content: "{{ combined_report }}"
         dest: "{{ report_path }}"
 
-    - name: Send Email with Attachment
-      become: false
-      run_once: true
-      delegate_to: localhost
+    - name: Send Email Once
       mail:
         host: "{{ smtp_server }}"
         port: "{{ smtp_port }}"
         username: "{{ smtp_user }}"
         password: "{{ smtp_password }}"
         to: "{{ to_email }}"
-        subject: "Health Report - {{ inventory_hostname }}"
-        body: "{{ report_content }}"
+        subject: "Enterprise Linux Health Report"
+        body: "{{ combined_report }}"
         attach:
           - "{{ report_path }}"
         secure: starttls
+
+
+
