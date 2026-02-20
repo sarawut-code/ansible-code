@@ -5,19 +5,12 @@
 
   tasks:
 
-    - name: Validate firewall_action
-      ansible.builtin.fail:
-        msg: "firewall_action must be 'enable' or 'disable'"
-      when: firewall_action is not defined
-
     ############################################################
     # REDHAT FAMILY (CentOS / RHEL / Oracle Linux)
     ############################################################
 
-    - name: Enable Firewalld (RedHat)
-      when:
-        - firewall_action == "enable"
-        - ansible_facts['os_family'] == "RedHat"
+    - name: Configure Firewalld (RedHat Family)
+      when: ansible_facts['os_family'] == "RedHat"
       block:
 
         - name: Install firewalld
@@ -25,7 +18,7 @@
             name: firewalld
             state: present
 
-        - name: Start firewalld
+        - name: Start and Enable firewalld
           ansible.builtin.systemd:
             name: firewalld
             state: started
@@ -43,23 +36,12 @@
             - { svc: 'ssh' }
             - { port: '10050/tcp' }
 
-    - name: Disable Firewalld (RedHat)
-      when:
-        - firewall_action == "disable"
-        - ansible_facts['os_family'] == "RedHat"
-      ansible.builtin.systemd:
-        name: firewalld
-        state: stopped
-        enabled: no
-
     ############################################################
     # DEBIAN FAMILY (Ubuntu)
     ############################################################
 
-    - name: Enable UFW (Ubuntu)
-      when:
-        - firewall_action == "enable"
-        - ansible_facts['os_family'] == "Debian"
+    - name: Configure UFW (Debian Family)
+      when: ansible_facts['os_family'] == "Debian"
       block:
 
         - name: Install ufw
@@ -68,28 +50,13 @@
             state: present
 
         - name: Allow HTTP
-          community.general.ufw:
-            rule: allow
-            name: "Apache"
+          ansible.builtin.command: ufw allow http
 
         - name: Allow SSH
-          community.general.ufw:
-            rule: allow
-            name: "OpenSSH"
+          ansible.builtin.command: ufw allow ssh
 
         - name: Allow Zabbix Port
-          community.general.ufw:
-            rule: allow
-            port: "10050"
-            proto: tcp
+          ansible.builtin.command: ufw allow 10050/tcp
 
         - name: Enable UFW
-          community.general.ufw:
-            state: enabled
-
-    - name: Disable UFW (Ubuntu)
-      when:
-        - firewall_action == "disable"
-        - ansible_facts['os_family'] == "Debian"
-      community.general.ufw:
-        state: disabled
+          ansible.builtin.command: ufw --force enable
