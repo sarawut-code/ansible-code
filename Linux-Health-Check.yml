@@ -7,9 +7,10 @@
   vars:
     memory_threshold: 80
     disk_threshold: 90
+
+    # Save report on AWX control node
     report_path: "/tmp/health_report_{{ inventory_hostname }}.txt"
 
-    # SMTP CONFIG
     smtp_server: "smtp.gmail.com"
     smtp_port: 587
     smtp_user: "sarawut.dank@gmail.com"
@@ -33,23 +34,13 @@
 
     - name: Set Memory Status
       set_fact:
-        memory_status: >-
-          {% if memory_usage_percent | float > memory_threshold %}
-          WARNING
-          {% else %}
-          OK
-          {% endif %}
+        memory_status: "{{ 'WARNING' if memory_usage_percent|float > memory_threshold else 'OK' }}"
 
     - name: Set Disk Status
       set_fact:
-        disk_status: >-
-          {% if disk_usage_percent | float > disk_threshold %}
-          CRITICAL
-          {% else %}
-          OK
-          {% endif %}
+        disk_status: "{{ 'CRITICAL' if disk_usage_percent|float > disk_threshold else 'OK' }}"
 
-    - name: Generate Report
+    - name: Generate Report Content
       set_fact:
         report_content: |
           ==========================================
@@ -72,18 +63,18 @@
 
           ==========================================
 
-    - name: Save Report to File
+    # 🔥 IMPORTANT FIX: Create file on localhost
+    - name: Save Report on AWX control node
+      become: false
+      delegate_to: localhost
       copy:
         content: "{{ report_content }}"
         dest: "{{ report_path }}"
 
-    - name: Show Report
-      debug:
-        msg: "{{ report_content }}"
-
     - name: Send Email with Attachment
       become: false
       run_once: true
+      delegate_to: localhost
       mail:
         host: "{{ smtp_server }}"
         port: "{{ smtp_port }}"
@@ -95,4 +86,3 @@
         attach:
           - "{{ report_path }}"
         secure: starttls
-      delegate_to: localhost
