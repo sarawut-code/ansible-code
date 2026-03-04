@@ -1,6 +1,7 @@
 ---
 - name: Cloudera License Management
   hosts: all
+  connection: local
   gather_facts: false
 
   tasks:
@@ -14,7 +15,6 @@
         force_basic_auth: true
         validate_certs: false
         return_content: true
-        status_code: 200
       register: license_info
 
     - name: Display License Summary
