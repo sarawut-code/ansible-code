@@ -1,18 +1,17 @@
 ---
-- name: Cloudera Impala Configuration Management
+- name: Cloudera Impala Configuration Check
   hosts: all
   connection: local
   gather_facts: false
 
   vars:
-    # --- Lock ค่า Service และ Role Group ไว้ใน Code ---
     service_name: "impala"
     role_group: "impala-IMPALAD-BASE"
 
   tasks:
-    - name: Fetch Impala Config via API
+
+    - name: Get Impala Config via API
       ansible.builtin.uri:
-        # ใช้ตัวแปรแยกตาม environment (cm_host, cm_port, cm_protocol)
         url: "{{ cm_protocol }}://{{ cm_host }}:{{ cm_port }}/api/v40/clusters/{{ cluster_name }}/services/{{ service_name }}/roleConfigGroups/{{ role_group }}/config"
         method: GET
         user: "{{ cm_username }}"
@@ -22,12 +21,12 @@
         return_content: true
       register: impala_config
 
-    - name: Display Summary and Top 2 Config Items
-      ansible.builtin.debug:
+    - name: Show mem_limit value
+      debug:
         msg:
           - "Environment: {{ env_label | default('N/A') }}"
           - "Cluster Host: {{ cm_host }}"
-          - "Service Locked: {{ service_name }}"
-          - "Role Group Locked: {{ role_group }}"
-          - "Config Items (First 2):"
-          - "{{ impala_config.json.items[:2] }}"
+          - "Cluster Name: {{ cluster_name }}"
+          - "Impala mem_limit: {{ item.value }}"
+      loop: "{{ impala_config.json.items }}"
+      when: item.name == "mem_limit"
