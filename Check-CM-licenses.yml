@@ -1,24 +1,25 @@
 ---
-- name: "Cloudera License Management"
+- name: Cloudera License Management
   hosts: all
-  connection: local
   gather_facts: false
 
   tasks:
-    - name: "Fetch Cloudera License via API"
-      uri:
-        url: "{{ cm_url }}/api/v40/cm/license"
+
+    - name: Fetch Cloudera License via API
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}:7180/api/v40/cm/license"
         method: GET
-        user: "{{ cm_username }}"      # ตั้งค่าใน AWX Credentials
-        password: "{{ cm_password }}"  # ตั้งค่าใน AWX Credentials
-        force_basic_auth: yes
-        validate_certs: no             # เทียบเท่ากับ -k ใน curl
+        user: "{{ cm_username }}"
+        password: "{{ cm_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        return_content: true
         status_code: 200
       register: license_info
 
-    - name: "Display License Summary"
-      debug:
-        msg: 
+    - name: Display License Summary
+      ansible.builtin.debug:
+        msg:
           - "Cluster IP: {{ inventory_hostname }}"
           - "License Type: {{ license_info.json.type | default('N/A') }}"
           - "Expiration: {{ license_info.json.expiration | default('No Expiration') }}"
