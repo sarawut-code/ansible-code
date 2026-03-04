@@ -7,7 +7,7 @@
 
     - name: Fetch Cloudera License via API
       ansible.builtin.uri:
-        url: "http://{{ inventory_hostname }}:7180/api/v40/cm/license"
+        url: "{{ cm_protocol }}://{{ cm_host }}:{{ cm_port }}/api/v40/cm/license"
         method: GET
         user: "{{ cm_username }}"
         password: "{{ cm_password }}"
@@ -20,7 +20,8 @@
     - name: Display License Summary
       ansible.builtin.debug:
         msg:
-          - "Cluster IP: {{ inventory_hostname }}"
-          - "License Type: {{ license_info.json.type | default('N/A') }}"
+          - "Cluster Host: {{ cm_host }}"
+          - "Protocol: {{ cm_protocol }}"
+          - "License Name: {{ license_info.json.name | default('N/A') }}"
           - "Expiration: {{ license_info.json.expiration | default('No Expiration') }}"
           - "Status: {{ 'Valid' if license_info.status == 200 else 'Error' }}"
