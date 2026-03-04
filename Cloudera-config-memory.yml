@@ -1,16 +1,17 @@
 ---
-- name: Cloudera Impala Configuration Check
+- name: Cloudera Impala Configuration Management
   hosts: all
   connection: local
   gather_facts: false
 
   vars:
+    # --- Locked Config ---
     service_name: "impala"
     role_group: "impala-IMPALAD-BASE"
+    target_config: "mem_limit"
 
   tasks:
-
-    - name: Get Impala Config via API
+    - name: Fetch Impala Config via API
       ansible.builtin.uri:
         url: "{{ cm_protocol }}://{{ cm_host }}:{{ cm_port }}/api/v40/clusters/{{ cluster_name }}/services/{{ service_name }}/roleConfigGroups/{{ role_group }}/config"
         method: GET
@@ -19,14 +20,16 @@
         force_basic_auth: true
         validate_certs: false
         return_content: true
-      register: impala_config
+      register: impala_api_response
 
     - name: Show mem_limit value
-      debug:
-        msg:
-          - "Environment: {{ env_label | default('N/A') }}"
-          - "Cluster Host: {{ cm_host }}"
-          - "Cluster Name: {{ cluster_name }}"
-          - "Impala mem_limit: {{ item.value }}"
-      loop: "{{ impala_config.json.items }}"
-      when: item.name == "mem_limit"
+      ansible.builtin.debug:
+        msg: "Config '{{ item.name }}' is set to: {{ item.value | default(item.default) }}"
+      loop: "{{ impala_api_response.json.items }}"
+      when: item.name == target_config
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Summary for {{ env_label }}
+      ansible.builtin.debug:
+        msg: "Completed fetching from {{ cm_host }} ({{ cluster_name }})"
