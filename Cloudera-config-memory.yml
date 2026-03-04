@@ -24,12 +24,16 @@
 
     - name: Show mem_limit value
       ansible.builtin.debug:
-        msg: "Config '{{ item.name }}' is set to: {{ item.value | default(item.default) }}"
-      loop: "{{ impala_api_response.json.items }}"
+        msg: 
+          - "Environment: {{ env_label }}"
+          - "Config Name: {{ item.name }}"
+          - "Current Value: {{ item.value | default(item.default) }}"
+      # ใช้ ['items'] เพื่อเลี่ยง Error 'built-in method items'
+      loop: "{{ impala_api_response.json['items'] }}"
       when: item.name == target_config
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Summary for {{ env_label }}
+    - name: Status Check
       ansible.builtin.debug:
-        msg: "Completed fetching from {{ cm_host }} ({{ cluster_name }})"
+        msg: "Successfully fetched from {{ cm_host }} ({{ cluster_name }})"
