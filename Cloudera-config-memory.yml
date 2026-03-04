@@ -5,10 +5,10 @@
   gather_facts: false
 
   vars:
-    # --- Locked Config ---
+    # --- Locked Config (ห้ามแก้) ---
     service_name: "impala"
     role_group: "impala-IMPALAD-BASE"
-    target_config: "mem_limit"
+    target_config: "impalad_memory_limit"
 
   tasks:
     - name: Fetch Impala Config via API
@@ -22,18 +22,18 @@
         return_content: true
       register: impala_api_response
 
-    - name: Show mem_limit value
+    - name: Set Fact for Target Config
+      # ค้นหา Item ที่มี name ตรงกับ target_config จากใน list ['items']
+      ansible.builtin.set_fact:
+        current_cfg: "{{ impala_api_response.json['items'] | selectattr('name', 'equalto', target_config) | first }}"
+
+    - name: Display mem_limit Summary
       ansible.builtin.debug:
         msg: 
-          - "Environment: {{ env_label }}"
-          - "Config Name: {{ item.name }}"
-          - "Current Value: {{ item.value | default(item.default) }}"
-      # ใช้ ['items'] เพื่อเลี่ยง Error 'built-in method items'
-      loop: "{{ impala_api_response.json['items'] }}"
-      when: item.name == target_config
-      loop_control:
-        label: "{{ item.name }}"
-
-    - name: Status Check
-      ansible.builtin.debug:
-        msg: "Successfully fetched from {{ cm_host }} ({{ cluster_name }})"
+          - "------------------------------------------"
+          - "ENVIRONMENT  : {{ env_label }}"
+          - "CLUSTER      : {{ cluster_name }}"
+          - "CONFIG NAME  : {{ current_cfg.name }}"
+          - "VALUE (Bytes): {{ current_cfg.value }}"
+          - "VALUE (MB)   : {{ (current_cfg.value | int / 1024 / 1024) | round(2) }} MB"
+          - "------------------------------------------"
